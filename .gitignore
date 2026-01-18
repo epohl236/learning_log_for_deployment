@@ -1,4 +1,5 @@
 # Django #
+ll_env/
 *.log
 *.pot
 *.pyc
