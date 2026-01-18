@@ -1,0 +1,11 @@
+E:\Trainings\Python\MatthesPythonCrashCourse\01_Basics\Part_II_Projects\git\learning_log_for_deployment
+
+This is a version of
+E:\Trainings\Python\MatthesPythonCrashCourse\01_Basics\Part_II_Projects\git\18_Django\learning_log
+
+created as a copy of learning_log's state after styling all LL pages and before deploying to upsun.
+
+Attempts to deploy learning_log directly failed, possibly because \learning_log is not a git repo but only a subfolder of 18_Django which is the repo.
+
+In contrast, learning_log_for_deployment is not only the LL root directory but also a (new) repo. Because the repo was created for learning_log_for_deployment, it has no history of learning_log at the time of the copy.
+
