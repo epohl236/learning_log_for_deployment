@@ -9,7 +9,39 @@
   <ul class="list-group border-bottom pb-2 mb-4">
     {% for topic in topics %}
       <li class="list-group-item border-0">
-          <a href="{% url 'learning_logs:topic' topic.id  %}">{{ topic.text }}</a>
+        <a href="{% url 'learning_logs:topic' topic.id  %}">{{ topic.text }}</a>
+        <small>
+          <a style="float:right" data-bs-toggle="modal" data-topic-id="{{ topic.id }}" href="#modalDeleteTopic">delete topic</a>
+        </small>
+
+        <!-- Message box to confirm delete -->
+        <div class="modal fade"
+          id="modalDeleteTopic"
+          tabindex="-1"
+          aria-labelledby="modalDeleteTopicLabel"
+          aria-hidden="true"
+        >
+          <div class="modal-dialog">
+            <div class="modal-content">
+              <div class="modal-header">
+                <h1 class="modal-title fs-5" id="modalDeleteTopicLabel">Delete topic</h1>
+                <button type="button"
+                  class="btn-close"
+                  data-bs-dismiss="modal" aria-label="Close"></button>
+              </div> <!-- End of modal-header -->
+              <div class="modal-body">
+                <p>Do you want to delete this topic and all of its entries?</p>
+              </div> <!-- End of modal-body -->
+              <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <form id="modal-footer-form" action="{% url 'learning_logs:delete_topic' 0 %}" method="post">
+                  {% csrf_token %}
+                  <button type="submit" class="btn btn-danger" data-bs-dismiss="modal">Delete topic</button>
+                </form>
+              </div> <!-- End of modal-footer -->
+            </div> <!-- End of modal-content -->
+          </div> <!-- End of modal-dialog -->
+        </div> <!-- End of modal fade -->
       </li>
     {% empty %}
       <li class="list-group-item border-0">No topics have been added yet.</li>
@@ -18,4 +50,38 @@
 
   <a href="{% url 'learning_logs:new_topic' %}" >Add a new topic</a>
 
+  <script>
+    // This event handler is called when the modal is shown.
+    // It replaces the '0' placeholder in the form's action URL
+    // with the id of the topic that is to be deleted.
+    // The topic id is taken from the "data-topic-id" attribute
+    // of the "Delete topic" link that was clicked.
+    var modalConfirmDelete = document.getElementById ("modalDeleteTopic")
+    if (modalConfirmDelete !== null)
+    {
+      modalConfirmDelete.addEventListener ("show.bs.modal", onShowBsModal)
+    }
+
+    function onShowBsModal (event)
+    {
+      // Element that triggered the modal
+      const linkModal = event.relatedTarget
+      // Extract topic id from data-topic-id attribute
+      const topicId = linkModal.getAttribute ("data-topic-id")
+      console.log (`topicId=${topicId}`)
+      // Update the modal's title
+      const modalTitle = modalConfirmDelete.querySelector (".modal-title")
+      modalTitle.textContent = `Delete topic ${topicId}`
+      // Update the form's action attribute
+      const form = document.getElementById ("modal-footer-form")
+      const action = form.getAttribute ("action")
+      // Should be something like "/delete_topic/0/" 
+      // or, on subsequent calls, "/delete_topic/19/".
+      // Replace the "0" or "19" with topicId
+      console.log (`action(old)=${action}`)
+      const action_new = action.replace (/^(.*\/)\d+(\/)$/, `$1${topicId}$2`)
+      console.log (`action(new)=${action_new}`)
+      form.setAttribute ("action", action_new)
+    }
+  </script>
 {% endblock content %}

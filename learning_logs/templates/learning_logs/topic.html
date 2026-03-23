@@ -11,21 +11,153 @@
 
   {% for entry in entries %}
     <div class="card mb-3">
-      <!-- Card header with timestamp and edit link -->
-      <h4 class="card-header">
+      <!-- Card header with timestamp and links for edit and delete -->
+      <h5 id="card-header" class="card-header d-flex">
         {{ entry.date_added|date:'d.m.Y H:i'}}
-        <small>
-          <a href="{% url 'learning_logs:edit_entry' entry.id %}">edit entry</a>
-        </small>
-      </h4>
+        <!-- The following two divs partition the space to the right
+        of entry.date_added into two columns, one left-aligned (via me-auto)
+        containing the "edit entry" link, and one right-aligned containing
+        the "delete entry" link. Otherwise the two links would be shown
+        very close together. See "Flex"/"Auto margins"
+        https://getbootstrap.com/docs/5.3/utilities/flex/#auto-margins
+        -->
+        <div class="me-auto">
+          <small>
+            <a class="ms-2" href="{% url 'learning_logs:edit_entry' entry.id %}">edit entry</a>
+          </small>
+        </div>
+        <div>
+          <small>
+            <a data-bs-toggle="modal"
+              data-entry-id="{{ entry.id }}"
+              data-date-added="{{ entry.date_added|date:'d.m.Y H:i'}}"
+              href="#modalDeleteEntry">delete entry</a>
+          </small>
+        </div>
+
+        <!-- Message box to confirm delete
+        See https://getbootstrap.com/docs/5.3/components/modal/
+        
+        The message box does not know which entry is to be deleted,
+        so the entry id is passed to the modal using a technique
+        described in "Varying modal content"
+        https://getbootstrap.com/docs/5.0/components/modal/#varying-modal-content
+        -->
+        <div class="modal fade"
+          id="modalDeleteEntry"
+          tabindex="-1"
+          aria-labelledby="modalDeleteEntryLabel"
+        >
+          <div class="modal-dialog">
+            <div class="modal-content">
+              <div class="modal-header">
+                <h1 class="modal-title fs-5" id="modalDeleteEntryLabel">Delete entry</h1>
+                <button type="button"
+                  class="btn-close"
+                  data-bs-dismiss="modal" aria-label="Close"></button>
+              </div> <!-- End of modal-header -->
+              <div class="modal-body">
+                <p id="modal-body-text">Do you want to delete this entry?</p>
+              </div> <!-- End of modal-body -->
+              <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <form id="modal-footer-form" action="{% url 'learning_logs:delete_entry' 0 %}" method="post">
+                  <!-- Not really a form, but required because button has no href attribute.
+
+                  The '0' at the end is a placeholder for the id of the entry that is to be
+                  deleted. It is replaced with the correct entry id by JavaScript below.
+
+                  Note that action="{% url 'learning_logs:delete_entry' entry.id %}" will not work
+                  because it always uses the id of the last entry in the for loop.
+                  -->
+                  {% csrf_token %}
+                  <button type="submit" class="btn btn-danger" data-bs-dismiss="modal">Delete entry</button>
+                  <!-- Attributes for this button:
+                  type="submit": triggers form action ("https://www.w3schools.com/tags/att_button_type.asp")
+                  class="btn btn-danger": creates a red Bootstrap button ("https://getbootstrap.com/docs/5.3/components/buttons/")
+                  data-bs-dismiss="modal": button closes the modal
+                  -->
+
+                  <!-- Save the path of the current topic page in a hidden control named "next".
+                  The view function can retrieve this value and use it to return to the page
+                  even if it doesn't know the topic id, which can happen if an invalid entry id
+                  was passed.
+                  This technique was shown in Antoine Pinsard's answer at
+                  "How to redirect to previous page in Django after POST request"
+                  https://stackoverflow.com/questions/35796195/how-to-redirect-to-previous-page-in-django-after-post-request
+                  -->
+                  <input type="hidden" name="next" value="{{ request.path }}">
+                </form>
+              </div> <!-- End of modal-footer -->
+            </div> <!-- End of modal-content -->
+          </div> <!-- End of modal-dialog -->
+        </div> <!-- End of modal fade -->
+      </h5> <!-- End of card-header -->
 
       <!-- Card body with entry text -->
       <div class="card-body">
         {{ entry.text|linebreaks }}
       </div>
-    </div>
+    </div> <!-- End of card -->
+
   {% empty %}
     <p>There are no entries for this topic yet.</p>
   {% endfor %}
+
+  <script>
+    // onShowBsModal() event handler is called when the modal is shown.
+    // It replaces the '0' placeholder in the form's action URL
+    // with the id of the entry that is to be deleted.
+    // The entry id is taken from the "data-entry-id" attribute
+    // of the "Delete entry" link that was clicked.
+    //
+    // onHiddenBsModal() event handler is called when the modal has finished
+    // being hidden. It moves the focus away from the closing button to
+    // avoid error "Blocked aria-hidden on an element because its descendant
+    // retained focus" on element id=modalDeleteEntry. Although we don't set
+    // aria-hidden on this element, this error sporadically occurs. This is 
+    // considered a bug in Bootstrap, to be fixed in v5.4
+    // https://github.com/informed-governance-project/NISINP/issues/594
+
+    var modalConfirmDelete = document.getElementById ("modalDeleteEntry")
+    if (modalConfirmDelete !== null)
+    {
+      modalConfirmDelete.addEventListener ("show.bs.modal", onShowBsModal)
+      modalConfirmDelete.addEventListener ("hidden.bs.modal", onHiddenBsModal)
+    }
+
+    function onShowBsModal (event)
+    {
+      // Element that triggered the modal
+      const linkModal = event.relatedTarget
+      // Extract entry id from data-entry-id attribute
+      const entryId = linkModal.getAttribute ("data-entry-id")
+      console.log (`entryId=${entryId}`)
+      // Update the modal's title
+      const modalTitle = modalConfirmDelete.querySelector (".modal-title")
+      modalTitle.textContent = `Delete entry ${entryId}`
+      // Update the modal's body text
+      // Extract "date added" text from data-date-added attribute
+      const dateAdded = linkModal.getAttribute ("data-date-added")
+      const modalBodyText = document.getElementById ("modal-body-text")
+      modalBodyText.textContent = `Do you want to delete the entry of ${dateAdded}?`
+      // Update the form's action attribute
+      const form = document.getElementById ("modal-footer-form")
+      const action = form.getAttribute ("action")
+      // Should be something like "/delete_entry/0/" 
+      // or, on subsequent calls, "/delete_entry/19/".
+      // Replace the "0" or "19" with entryId
+      console.log (`action(old)=${action}`)
+      const action_new = action.replace (/^(.*\/)\d+(\/)$/, `$1${entryId}$2`)
+      console.log (`action(new)=${action_new}`)
+      form.setAttribute ("action", action_new)
+    }
+
+    function onHiddenBsModal (event)
+    {
+      document.getElementById ("card-header").focus()
+    }
+
+  </script>
 {% endblock content %}
 
