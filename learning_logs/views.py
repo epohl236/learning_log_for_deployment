@@ -1,6 +1,6 @@
 from django.shortcuts import render, redirect
 from django.contrib.auth.decorators import login_required
-from django.http import Http404
+from django.http import Http404, HttpResponseNotModified
 
 from .models import Topic, Entry
 from .forms import TopicForm, EntryForm
@@ -101,3 +101,85 @@ def check_topic_owner (topic, request):
      the current user"""
     if topic.owner != request.user:
         raise Http404
+
+
+@login_required
+def delete_entry (request, entry_id):
+    """Delete an existing entry"""
+
+    #############
+    print ("request.path:", request.path)
+
+    if request.method == "POST" and entry_id == 0:
+        # Special case: 0 is not really an entry id but a placeholder
+        # for an entry id in the topic.html template. It should have 
+        # been replaced with the correct entry id by some JavaScript
+        # in the template. But if not, just eat the request and return
+        # to the calling topic page.
+        #
+        # Of course, since we don't have a valid entry id we cannot
+        # use it to find the topic id, thus don't know which topic page
+        # to return to. But using a technique shown in Antoine Pinsard's answer at
+        # "How to redirect to previous page in Django after POST request"
+        # https://stackoverflow.com/questions/35796195/how-to-redirect-to-previous-page-in-django-after-post-request
+        # we can retrieve the page's path from a hidden control named "next"
+        # where the template stored the page's path before posting.
+
+        print ("delete_entry (0): returning to topic page")
+        postParams = request.POST
+        print ("delete_entry (0): POST =", postParams)
+
+        if "next" in postParams:
+            next = postParams.get ("next", "/")
+            print ("delete_entry (0): redirecting to next =", next)
+            return redirect (next)
+        else:
+            print ("'next' param not found, returning HttpResponseNotModified")
+            return HttpResponseNotModified()
+
+    try:    
+        entry = Entry.objects.get (id=entry_id)
+    except Entry.DoesNotExist:
+        print ("Entry not found: entry_id =", entry_id)
+        raise Http404
+    except Entry.MultipleObjectsReturned:
+        print ("Multiple entries found: entry_id =", entry_id)
+        raise Http404
+
+    topic = entry.topic
+    check_topic_owner (topic, request)
+    
+    if request.method == "POST":
+        entry.delete()
+
+    return redirect ("learning_logs:topic", topic_id=topic.id)
+       
+
+
+@login_required
+def delete_topic (request, topic_id):
+    """Delete an existing topic and all of its entries"""
+
+    #############
+    print ("delete_topic() request.path:", request.path)
+
+    if request.method == "POST" and topic_id == 0:
+        print ("delete_topic (0): returning to topics page")
+        return redirect ("learning_logs:topics")
+
+    try:    
+        topic = Topic.objects.get (id=topic_id)
+    except Topic.DoesNotExist:
+        print ("Topic not found: topic_id =", topic_id)
+        raise Http404
+    except Topic.MultipleObjectsReturned:
+        print ("Multiple topics found: topic_id =", topic_id)
+        raise Http404
+
+    check_topic_owner (topic, request)
+    
+    if request.method == "POST":
+        topic.delete()
+
+    return redirect ("learning_logs:topics")
+       
