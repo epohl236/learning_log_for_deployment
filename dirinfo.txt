@@ -3,7 +3,7 @@ E:\Trainings\Python\MatthesPythonCrashCourse\01_Basics\Part_II_Projects\git\lear
 This is a version of
 E:\Trainings\Python\MatthesPythonCrashCourse\01_Basics\Part_II_Projects\git\18_Django\learning_log
 
-created as a copy of learning_log's state after styling all LL pages and before deploying to upsun.
+created as a copy of learning_log's state after styling all LL pages and before deploying to scalingo.
 
 Attempts to deploy learning_log directly failed, possibly because \learning_log is not a git repo but only a subfolder of 18_Django which is the repo.
 
